@@ -1,11 +1,37 @@
 import random
+import time
 
+def crossover(c1,c2):
+    r = random.randint(1,len(c1))
+    c1 = c1[:r]
+    c2 = c2[r:]
+    return c1+c2
 
-def generatePops(benda,n):
-    pops = []
+def generatePop(benda,n):
+    pop = []
     for i in range(n):
-        pops.append([random.randint(0,1) for i in range(len(benda.keys()))])
-    return pops    
+        c = []
+        for i in range(len(benda.keys())):
+            alpha = random.uniform(0,1)
+            beta = 1-alpha
+            c.append([alpha,beta])        
+        pop.append(c)
+    return pop
+
+
+            
+def qgate(pop):
+    classic = []
+    for i in pop:
+        c = []
+        for j in i:
+            r = random.uniform(0,1)
+            if r <= j[0]:
+                c.append(0)
+            else:
+                c.append(1)
+        classic.append(c)
+    return classic
 
 def calcVal(pop):
     totalVal = 0
@@ -24,62 +50,7 @@ def calcWg(pop):
 def calcFit(pop):
     return calcVal(pop)/2*calcWg(pop)
 
-def selectedPops(pops,cap):
-    selected = []
-    for pop in pops:
-        if calcWg(pop)<=cap and calcWg(pop)!=0 and pop not in selected:
-            selected.append(pop)
-    return selected
-
-def selectParents(selected):
-    rank = []
-    buffer = dict()
-    for i,pop in enumerate(selected):
-        buffer[calcFit(pop)] = i
-    for k in buffer.keys():
-        rank.append(k)
-    father = selected[buffer[rank[-1]]]
-    try:
-        mother = selected[buffer[rank[-2]]]
-    except:
-        mother = father
-    return father,mother  
-                     
-
-def crossover(father,mother):
-    half = round(len(father)/2)
-    childs = []
-    father_part = [father[0:half],father[half:len(father)]]
-    mother_part = [father[0:half],mother[half:len(mother)]]
-    for i in range(2):
-        for j in range(2):
-            if i!=j:
-                childs.append(father_part[i]+mother_part[j])
-    for i in range(2):
-        for j in range(2):
-            if i!=j:
-                childs.append(father_part[j]+mother_part[i])            
-    return childs        
-
-            
-"""
-mutate the child at the rate of 1%
-"""
-def mutations(childs):
-    rate = [1] + [0]*99
-    for i in childs:
-        mutate = random.sample(rate,1)[0]
-        if mutate==1:
-            index = random.randint(0,len(childs)-1)
-            childs[index] = random.sample(childs[index],len(childs[0]))
-    return childs
- 
-    
-"""
-choosing the best breed
-"""
 def bestPop(newPops):
-    newPops = selectedPops(pops,cap)
     bestFit=0
     bestChild = []
     kamus_best = dict()
@@ -93,34 +64,62 @@ def bestPop(newPops):
         elif bestFit == temp:
             if calcWg(bestChild)<calcWg(i):
                 bestChild=i
-    return bestChild,bestFit,kamus_best        
+    return bestChild,bestFit,kamus_best 
 
+def selectedPop(pops,cap):
+    selected = []
+    for pop in pops:
+        if calcWg(pop)<=cap and calcWg(pop)!=0 and pop not in selected:
+            selected.append(pop)
+    return selected
 
-def genetic_main(pops,cap,NCMax):
-    pop = pops
+def qgenetic_main(pop,cap,NCMax):
     NC = 0
+    best = []
     while NC<NCMax:
-        selected = selectedPops(pop,cap)
-        f,m = selectParents(selected)
-        c = crossover(f,m)
-        pop = mutations(c)
-        NC+=1    
-    return bestPop(pop)
+        #crossover
+        for c in pop:
+            r = random.uniform(0,1)
+            if r<=CP:
+                selected = []
+                for i in range(2):
+                    selected.append(random.sample([i for i in range(len(pop))],1)[0])
+                pop.append(crossover(pop[selected[0]],pop[selected[1]]))
+        
+        #mutation
+        for c in pop:
+            for qb in c:
+                r = random.uniform(0,1)
+                if r<=MR:
+                    qb[0],qb[1] = qb[1],qb[0]
+        
+        classic =  qgate(pop)
+        classic = selectedPop(classic,cap)
+        best = bestPop(classic)
+        NC+=1
+    return best
+        
 
 def decode(chromosome,benda):
     hasil = []
     for i,v in enumerate(benda.keys()):
         if chromosome[i]==1:
             hasil.append(v)
-    return hasil
-
-
-if __name__=="__main__":
-    benda = {'sepatu': [20, 10], 'buah': [20, 10],'odol':[2,11],'sikat gigi':[20,1],\
+    return hasil  
+       
+benda = {'sepatu': [20, 10], 'buah': [20, 10],'odol':[2,11],'sikat gigi':[20,1],
              'rokok':[100,5],'buku':[50,10],'sambiloto':[10,30],'playstation':[10,50]\
-             ,'sabun':[50,10],'minuman':[10,50],'sambel':[5,10],'makanan ringan':[70,10]}
-    
-    cap = 100
-    pops = generatePops(benda,10000)
-    b,k,w = genetic_main(pops,cap,5)    
-    print(decode(b,benda))
+             ,'sabun':[50,10],'minuman':[10,50],'sambel':[5,10],'makanan ringan':[70,10],\
+             'yet':[20,12],'another':[2,4],'rumah':[10,1000],'genting':[50,10],'sesuatu':[90,50]}
+
+
+CP = 0.25
+MR = 0.01
+NCMax = 10     
+
+pop = generatePop(benda,100)
+t1 = time.time()
+b1,k1,w1 = qgenetic_main(pop,50,NCMax)
+t2 = time.time()
+print(decode(b1,benda))
+print(t2-t1)
